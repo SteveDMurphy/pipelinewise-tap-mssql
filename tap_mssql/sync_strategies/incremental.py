@@ -55,28 +55,25 @@ def sync_table(mssql_conn, config, catalog_entry, state, columns):
 
     singer.write_message(activate_version_message)
     LOGGER.info("Beginning SQL")
-    with connect_with_backoff(mssql_conn) as open_conn:
-        with open_conn.cursor() as cur:
-            select_sql = common.generate_select_sql(catalog_entry, columns)
-            params = {}
+    with mssql_conn.connect() as open_conn:
+        select_sql = common.generate_select_sql(catalog_entry, columns)
+        params = {}
 
-            if replication_key_value is not None:
-                if (
-                    catalog_entry.schema.properties[replication_key_metadata].format
-                    == "date-time"
-                ):
-                    replication_key_value = pendulum.parse(replication_key_value)
+        if replication_key_value is not None:
+            if (
+                catalog_entry.schema.properties[replication_key_metadata].format
+                == "date-time"
+            ):
+                replication_key_value = pendulum.parse(replication_key_value)
 
-                select_sql += (
-                    ' WHERE "{}" >= %(replication_key_value)s ORDER BY "{}" ASC'.format(
-                        replication_key_metadata, replication_key_metadata
-                    )
-                )
-
-                params["replication_key_value"] = replication_key_value
-            elif replication_key_metadata is not None:
-                select_sql += ' ORDER BY "{}" ASC'.format(replication_key_metadata)
-
-            common.sync_query(
-                cur, catalog_entry, state, select_sql, columns, stream_version, params
+            select_sql += ' WHERE "{}" >= ? ORDER BY "{}" ASC'.format(
+                replication_key_metadata, replication_key_metadata
             )
+
+            params["replication_key_value"] = replication_key_value
+        elif replication_key_metadata is not None:
+            select_sql += ' ORDER BY "{}" ASC'.format(replication_key_metadata)
+
+        common.sync_query(
+            open_conn, catalog_entry, state, select_sql, columns, stream_version, params
+        )
