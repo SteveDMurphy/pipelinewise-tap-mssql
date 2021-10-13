@@ -9,7 +9,6 @@ import tap_mssql.sync_strategies.common as common
 
 from tap_mssql.connection import (
     connect_with_backoff,
-    MSSQLConnection,
     get_azure_sql_engine,
 )
 

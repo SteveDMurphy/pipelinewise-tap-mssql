@@ -10,8 +10,6 @@ import logging
 import copy
 import uuid
 
-import pymssql
-
 import singer
 import singer.metrics as metrics
 import singer.schema
@@ -28,7 +26,6 @@ import tap_mssql.sync_strategies.incremental as incremental
 
 from tap_mssql.connection import (
     connect_with_backoff,
-    MSSQLConnection,
     get_azure_sql_engine,
 )
 

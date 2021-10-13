@@ -7,7 +7,6 @@ from singer import metadata
 
 from tap_mssql.connection import (
     connect_with_backoff,
-    MSSQLConnection,
     get_azure_sql_engine,
 )
 import tap_mssql.sync_strategies.common as common

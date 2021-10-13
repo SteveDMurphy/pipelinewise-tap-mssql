@@ -19,7 +19,6 @@ setup(
         "singer-python==5.9.0",
         "sqlalchemy==1.3.6",
         "pyodbc==4.0.26",
-        "pymssql==2.1.5",
         "backoff==1.8.0",
     ],
     entry_points="""
