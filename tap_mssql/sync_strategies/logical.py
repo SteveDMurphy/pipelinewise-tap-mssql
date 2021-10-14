@@ -24,30 +24,32 @@ BOOKMARK_KEYS = {
 # do_sync_full_table(mssql_conn, config, catalog_entry, state, columns)
 
 
-class log_based_sync:
+class log_based_sync():
     """
     Methods to validate the log-based sync of a table from mssql
     """
 
-    def __init(self, mssql_conn, config, catalog_entry, state, columns):
+    def __init__(self, mssql_conn, config, catalog_entry, state, columns):
         self.logger = singer.get_logger()
         self.config = config
         self.catalog_entry = catalog_entry
         self.state = state
         self.columns = columns
-        self.database_name = common.get_database_name(
+        self.database_name = config.get("database")
+        self.schema_name = common.get_database_name(
             self.catalog_entry
-        )  # this is actually the schema name, database should be supplied elsewhere as required (config appears to be used today)
+        )
         self.table_name = catalog_entry.table
-        self.mssql_conn = get_azure_sql_engine(config)
+        self.mssql_conn = mssql_conn
 
     def assert_log_based_is_enabled(self):
 
-        database_is_change_tracking_enabled = _get_change_tracking_database()
-
-        table_is_change_tracking_enabled = _get_change_tracking_tables()
-
-        min_valid_version = _get_min_valid_version()
+        database_is_change_tracking_enabled = self._get_change_tracking_database()
+        self.logger.info(database_is_change_tracking_enabled)
+        table_is_change_tracking_enabled = self._get_change_tracking_tables()
+        self.logger.info(table_is_change_tracking_enabled)
+        min_valid_version = self._get_min_valid_version()
+        self.logger.info(min_valid_version)
 
         if (
             database_is_change_tracking_enabled
@@ -62,10 +64,6 @@ class log_based_sync:
         self,
     ):  # do this the first time only as required? future change for now
         self.logger.info("Validate the database for change tracking")
-
-        database_id = (
-            self.database_name
-        )  # TODO: this should actually come from the config instead to validate. Alternatively, it may just work if is not null
 
         sql_query = (
             "SELECT DB_NAME(database_id) AS db_name FROM sys.change_tracking_databases"
@@ -86,7 +84,7 @@ class log_based_sync:
 
         self.logger.info("Validating the schemas and tables for change tracking")
 
-        schema_table = (self.database_name, self.table_name)
+        schema_table = (self.schema_name, self.table_name)
 
         sql_query = """
             SELECT OBJECT_SCHEMA_NAME(object_id) AS schema_name,
@@ -98,7 +96,8 @@ class log_based_sync:
         with self.mssql_conn.connect() as open_conn:
             change_tracking_tables = open_conn.execute(sql_query)
 
-            if schema_table in change_tracking_tables.fetchall():
+            enabled_change_tracking_tables = change_tracking_tables.fetchall()
+            if schema_table in enabled_change_tracking_tables:
                 table_is_change_tracking_enabled = True
 
         return table_is_change_tracking_enabled  # this should be the table name
@@ -108,7 +107,7 @@ class log_based_sync:
         self.logger.info("Validating the min_valid_version")
 
         sql_query = "SELECT CHANGE_TRACKING_MIN_VALID_VERSION({}) as min_valid_version"
-        object_id = _get_object_version_by_table_name()
+        object_id = self._get_object_version_by_table_name()
 
         with self.mssql_conn.connect() as open_conn:
             results = open_conn.execute(sql_query.format(object_id))
@@ -122,10 +121,10 @@ class log_based_sync:
 
         self.logger.info("Getting object_id by name")
 
-        schema_table = self.database_name + "." + self.table_name
+        schema_table = self.schema_name + "." + self.table_name
         # config.database_name
         # sel
-        sql_query = "SELECT OBJECT_ID({}) AS object_id"
+        sql_query = "SELECT OBJECT_ID('{}') AS object_id"
         #    (-> (partial format "%s.%s.%s")
         with self.mssql_conn.connect() as open_conn:
             results = open_conn.execute(sql_query.format(schema_table))
