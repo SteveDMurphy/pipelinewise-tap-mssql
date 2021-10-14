@@ -45,20 +45,18 @@ class log_based_sync():
     def assert_log_based_is_enabled(self):
 
         database_is_change_tracking_enabled = self._get_change_tracking_database()
-        self.logger.info(database_is_change_tracking_enabled)
         table_is_change_tracking_enabled = self._get_change_tracking_tables()
-        self.logger.info(table_is_change_tracking_enabled)
         min_valid_version = self._get_min_valid_version()
-        self.logger.info(min_valid_version)
 
         if (
             database_is_change_tracking_enabled
             & table_is_change_tracking_enabled
-            & min_valid_version
+            & min_valid_version is not None
         ):
+            self.logger.info("Asserted stream is log-based enabled!")
             return True
         else:
-            return False
+            return False # use this to break silently maybe if a table is not set properly and move to the next item?
 
     def _get_change_tracking_database(
         self,
@@ -75,8 +73,12 @@ class log_based_sync():
             results = open_conn.execute(sql_query)
             row = results.fetchone()
 
-            if row["db_name"] == database_id:
+            if row["db_name"] == self.database_name:
                 database_is_change_tracking_enabled = True
+            else:
+                raise Exception(
+                    "Cannot sync stream using log-based replication. Change tracking is not enabled for database: {}"
+                ).format(self.database_name)
 
         return database_is_change_tracking_enabled
 
@@ -99,8 +101,12 @@ class log_based_sync():
             enabled_change_tracking_tables = change_tracking_tables.fetchall()
             if schema_table in enabled_change_tracking_tables:
                 table_is_change_tracking_enabled = True
+            else:
+                raise Exception(
+                    "Cannot sync stream using log-based replication. Change tracking is not enabled for table: {}"
+                ).format(self.schema_table)
 
-        return table_is_change_tracking_enabled  # this should be the table name
+        return table_is_change_tracking_enabled  # this should be the table name?
 
     def _get_min_valid_version(self):  # should be per table I think?
 
@@ -131,6 +137,11 @@ class log_based_sync():
             row = results.fetchone()
 
             object_id = row["object_id"]
+
+        if object_id is None:
+            raise Exception(
+                "The min valid version for the table was null"
+            ).format(self.schema_table)
 
         return object_id
 
