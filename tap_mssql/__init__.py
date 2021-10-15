@@ -23,6 +23,7 @@ from singer.catalog import Catalog, CatalogEntry
 import tap_mssql.sync_strategies.common as common
 import tap_mssql.sync_strategies.full_table as full_table
 import tap_mssql.sync_strategies.incremental as incremental
+import tap_mssql.sync_strategies.logical as logical
 
 from tap_mssql.connection import (
     connect_with_backoff,
@@ -507,6 +508,65 @@ def do_sync_full_table(mssql_conn, config, catalog_entry, state, columns):
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
 
+def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
+
+    ## incremental
+    # md_map = metadata.to_map(catalog_entry.metadata)
+    # stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
+    # replication_key = md_map.get((), {}).get("replication-key")
+    # write_schema_message(
+    #     catalog_entry=catalog_entry, bookmark_properties=[replication_key]
+    # )
+    # LOGGER.info("Schema written")
+    # incremental.sync_table(mssql_conn, config, catalog_entry, state, columns)
+
+    # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+    ## full_table
+    key_properties = common.get_key_properties(catalog_entry)
+
+    write_schema_message(catalog_entry)
+
+    stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
+
+    log_based = logical.log_based_sync(mssql_conn, config, catalog_entry, state, columns)
+    LOGGER.info("Slartibartfast")
+    # attrs = vars(log_based)
+    # {'kids': 0, 'name': 'Dog', 'color': 'Spotted', 'age': 10, 'legs': 2, 'smell': 'Alot'}
+    # now dump this in some way or another
+    # LOGGER.info(', '.join("%s: %s" % item for item in attrs.items()))
+
+    log_based.assert_log_based_is_enabled()
+    # full_table.sync_table(
+    #     mssql_conn, config, catalog_entry, state, columns, stream_version
+    # )
+
+    # create state if none exists
+    log_based.log_based_init_state()
+
+    initial_load = log_based.log_based_initial_full_table()
+
+    if initial_load:
+        LOGGER.info("do full sync")
+        LOGGER.info("update state")
+    else:
+        LOGGER.info("Continue log-based syncing")
+
+    # if state is not good
+    ## do a full sync and write state
+    # else
+    ## do a logbased sync
+
+    # Prefer initial_full_table_complete going forward
+    # singer.clear_bookmark(state, catalog_entry.tap_stream_id, "version")
+
+    # state = singer.write_bookmark(
+    #     state, catalog_entry.tap_stream_id, "initial_full_table_complete", True
+    # )
+
+    # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+
 def sync_non_binlog_streams(mssql_conn, non_binlog_catalog, config, state):
 
     for catalog_entry in non_binlog_catalog.streams:
@@ -553,6 +613,9 @@ def sync_non_binlog_streams(mssql_conn, non_binlog_catalog, config, state):
             elif replication_method == "FULL_TABLE":
                 LOGGER.info(f"syncing {catalog_entry.table} full table")
                 do_sync_full_table(mssql_conn, config, catalog_entry, state, columns)
+            elif replication_method == "LOG_BASED":
+                LOGGER.info(f"syncing {catalog_entry.table} using replication method LOG_BASED")
+                do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns)
             else:
                 raise Exception(
                     "only INCREMENTAL and FULL TABLE replication methods are supported"

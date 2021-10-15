@@ -58,9 +58,7 @@ class log_based_sync():
         else:
             return False # use this to break silently maybe if a table is not set properly and move to the next item?
 
-    def _get_change_tracking_database(
-        self,
-    ):  # do this the first time only as required? future change for now
+    def _get_change_tracking_database(self):  # do this the first time only as required? future change for now
         self.logger.info("Validate the database for change tracking")
 
         sql_query = (
@@ -148,26 +146,50 @@ class log_based_sync():
     def log_based_init_state(self):
         # this appears to look for an existing state and gets the current log version if necessary
         # also setting the initial_full_table_complete state to false
-        initial_full_table_complete = (
-            None  # need to pull this from a bookmark/state area
+
+        initial_full_table_complete = singer.get_bookmark(
+            self.state, self.catalog_entry.tap_stream_id, "initial_full_table_complete"
         )
+
         if initial_full_table_complete is None:
-            current_log_version = _get_current_log_version()
-            print(
-                "set the current_log_version to the received version and set initial_full_table_complete to False"
+            self.logger.info("Setting new current log version from db.")
+
+            current_log_version = self._get_current_log_version()
+
+            state = singer.write_bookmark(
+                self.state, self.catalog_entry.tap_stream_id, "initial_full_table_complete", False
             )
-            print("write state for stream-name to stdout")
+        # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+
 
     def _get_current_log_version(self):
+        self.logger.info("Getting current change tracking version.")
 
         sql_query = "SELECT current_version = CHANGE_TRACKING_CURRENT_VERSION()"
 
-        current_log_version = _get_single_result(sql_query, "current_version")
+        current_log_version = self._get_single_result(sql_query, "current_version")
 
         return current_log_version
 
     def log_based_initial_full_table(self):
         "Determine if we should run a full load of the table or use state."
+
+        initial_full_table_complete = singer.get_bookmark(
+            self.state, self.catalog_entry.tap_stream_id, "initial_full_table_complete"
+        )
+        current_log_version = self._get_current_log_version()
+        min_valid_version = self._get_min_valid_version()
+
+        min_version_out_of_date = min_valid_version < current_log_version
+        self.logger.info(initial_full_table_complete)
+        self.logger.info(min_version_out_of_date)
+        if initial_full_table_complete == True and min_version_out_of_date == True:
+            return False
+        else:
+            return True
+
+
         return True
 
     def log_based_sync(self):
