@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # pylint: disable=duplicate-code
-
+import copy
 import pendulum
 import singer
-from singer import metadata
+from singer import metadata, metrics, utils
+import time
 
 from tap_mssql.connection import (
     connect_with_backoff,
@@ -24,7 +25,7 @@ BOOKMARK_KEYS = {
 # do_sync_full_table(mssql_conn, config, catalog_entry, state, columns)
 
 
-class log_based_sync():
+class log_based_sync:
     """
     Methods to validate the log-based sync of a table from mssql
     """
@@ -36,14 +37,11 @@ class log_based_sync():
         self.state = state
         self.columns = columns
         self.database_name = config.get("database")
-        self.schema_name = common.get_database_name(
-            self.catalog_entry
-        )
+        self.schema_name = common.get_database_name(self.catalog_entry)
         self.table_name = catalog_entry.table
         self.mssql_conn = mssql_conn
 
     def assert_log_based_is_enabled(self):
-
         database_is_change_tracking_enabled = self._get_change_tracking_database()
         table_is_change_tracking_enabled = self._get_change_tracking_tables()
         min_valid_version = self._get_min_valid_version()
@@ -51,14 +49,17 @@ class log_based_sync():
         if (
             database_is_change_tracking_enabled
             & table_is_change_tracking_enabled
-            & min_valid_version is not None
+            & min_valid_version
+            is not None
         ):
             self.logger.info("Asserted stream is log-based enabled!")
             return True
         else:
-            return False # use this to break silently maybe if a table is not set properly and move to the next item?
+            return False  # use this to break silently maybe if a table is not set properly and move to the next item?
 
-    def _get_change_tracking_database(self):  # do this the first time only as required? future change for now
+    def _get_change_tracking_database(
+        self,
+    ):  # do this the first time only as required? future change for now
         self.logger.info("Validate the database for change tracking")
 
         sql_query = (
@@ -129,7 +130,7 @@ class log_based_sync():
         # config.database_name
         # sel
         sql_query = "SELECT OBJECT_ID('{}') AS object_id"
-        #    (-> (partial format "%s.%s.%s")
+        #    (-> (partial format "{}.{}.{}")
         with self.mssql_conn.connect() as open_conn:
             results = open_conn.execute(sql_query.format(schema_table))
             row = results.fetchone()
@@ -137,9 +138,9 @@ class log_based_sync():
             object_id = row["object_id"]
 
         if object_id is None:
-            raise Exception(
-                "The min valid version for the table was null"
-            ).format(self.schema_table)
+            raise Exception("The min valid version for the table was null").format(
+                self.schema_table
+            )
 
         return object_id
 
@@ -154,14 +155,18 @@ class log_based_sync():
         if initial_full_table_complete is None:
             self.logger.info("Setting new current log version from db.")
 
-            current_log_version = self._get_current_log_version()
+            self.current_log_version = self._get_current_log_version()
+            self.initial_full_table_complete = False
 
-            state = singer.write_bookmark(
-                self.state, self.catalog_entry.tap_stream_id, "initial_full_table_complete", False
+            return False
+        else:
+            self.initial_full_table_complete = initial_full_table_complete
+            self.current_log_version = singer.get_bookmark(
+                self.state, self.catalog_entry.tap_stream_id, "current_log_version"
             )
+            return True
+
         # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
-
-
 
     def _get_current_log_version(self):
         self.logger.info("Getting current change tracking version.")
@@ -175,26 +180,146 @@ class log_based_sync():
     def log_based_initial_full_table(self):
         "Determine if we should run a full load of the table or use state."
 
-        initial_full_table_complete = singer.get_bookmark(
-            self.state, self.catalog_entry.tap_stream_id, "initial_full_table_complete"
-        )
-        current_log_version = self._get_current_log_version()
         min_valid_version = self._get_min_valid_version()
 
-        min_version_out_of_date = min_valid_version < current_log_version
-        self.logger.info(initial_full_table_complete)
-        self.logger.info(min_version_out_of_date)
-        if initial_full_table_complete == True and min_version_out_of_date == True:
-            return False
-        else:
+        min_version_out_of_date = min_valid_version > self.current_log_version
+        # self.logger.info("min valid version: ")
+        # self.logger.info(min_valid_version)
+        # self.logger.info(self.current_log_version)
+        # self.logger.info(min_version_out_of_date)
+        if self.initial_full_table_complete == False:
+            self.logger.info("No initial load found, xecuting a full table sync.")
             return True
 
+        elif (
+            self.initial_full_table_complete == True and min_version_out_of_date == True
+        ):
+            self.logger.info(
+                "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
+            )
+            return True
+        else:
+            return False
 
-        return True
-
-    def log_based_sync(self):
+    def execute_log_based_sync(self):
         "Confirm we have state and run a log based query. This will be larger."
-        return True
+        ct_sql_query = self._build_ct_sql_query()
+        self.logger.info("Executing query: {}".format(ct_sql_query))
+        # LOGGER.warn(self.columns)
+        time_extracted = utils.now()
+        stream_version = common.get_stream_version(
+            self.catalog_entry.tap_stream_id, self.state
+        )
+        with self.mssql_conn.connect() as open_conn:
+            results = open_conn.execute(ct_sql_query)
+
+            row = results.fetchone()
+            rows_saved = 0
+
+            with metrics.record_counter(None) as counter:
+                counter.tags["database"] = self.database_name
+                counter.tags["table"] = self.table_name
+
+                while row:
+                    counter.increment()
+                    # LOGGER.warn(row)
+                    filtered_row_dict = {
+                        x: v for x, v in row.items() if x in self.columns
+                    }
+                    rows_saved += 1
+
+                    if (
+                        row["sys_change_operation"] == "D"
+                        and row["commit_time"] is None
+                    ):
+                        self.logger.warn(
+                            "Found deleted record with no timestamp, falling back to current time."
+                        )
+                        # Need to do something else here
+                        # row["DateCreated"] = utils.now()
+
+                    record_message = common.row_to_singer_record(
+                        self.catalog_entry,
+                        stream_version,
+                        filtered_row_dict,
+                        self.columns,
+                        time_extracted,
+                    )
+
+                    singer.write_message(record_message)
+
+                    self.state = singer.write_bookmark(
+                        self.state,
+                        self.catalog_entry.tap_stream_id,
+                        "current_log_version",
+                        row["sys_change_version"],
+                    )
+                    self.current_log_version = row["sys_change_version"]
+                    # do more
+                    row = results.fetchone()
+
+            # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+            singer.write_message(singer.StateMessage(value=copy.deepcopy(self.state)))
+
+    def _build_ct_sql_query(self):
+
+        # make this a separate function?
+        key_properties = common.get_key_properties(self.catalog_entry)
+        selected_columns = sorted(
+            [column for column in self.columns if column not in key_properties],
+            key=str.lower,
+        )
+        # if no primary keys, skip with error
+        # "No primary key(s) found, must have a primary key to replicate")
+        key_join_list = []
+        for key in key_properties:
+            # primary_key_join_string = "c.{}={}.{}.{}".format(
+            #     key, self.schema_name, self.table_name, key
+            # )
+            primary_key_join_string = "c.{}=st.{}".format(key, key)
+            key_join_list.append(primary_key_join_string)
+
+        select_clause = (
+            "select c.sys_change_version, c.sys_change_operation, tc.commit_time"
+        )
+
+        select_key_columns_clause = ",c.{}".format(",c.".join(key_properties))
+
+        select_added_columns_clause = ",st.{}".format(",st.".join(selected_columns))
+
+        from_clause = " FROM CHANGETABLE (CHANGES {}.{}, {}) as c ".format(
+            self.schema_name, self.table_name, self.current_log_version - 1
+        )
+
+        source_table_join_clause = "LEFT JOIN {}.{} as st ON {}".format(
+            self.schema_name, self.table_name, " AND ".join(key_join_list)
+        )
+        commit_table_join_clause = """
+            left join sys.dm_tran_commit_table tc
+            on c.sys_change_version = tc.commit_ts
+            """
+
+        order_by_clause = "order by c.sys_change_version"
+
+        sql_query = """
+        {}
+        {}
+        {}
+        {}
+        {}
+        {}
+        {}
+        """.format(
+            select_clause,
+            select_key_columns_clause,
+            select_added_columns_clause,
+            from_clause,
+            source_table_join_clause,
+            commit_table_join_clause,
+            order_by_clause,
+        )
+
+        return sql_query
 
     def _get_single_result(self, sql_query, column):
         """
@@ -215,3 +340,5 @@ class log_based_sync():
 #     common.whitelist_bookmark_keys(
 #         generate_bookmark_keys(catalog_entry), catalog_entry.tap_stream_id, state
 #     )
+
+# 24000870
