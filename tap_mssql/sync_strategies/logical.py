@@ -200,7 +200,9 @@ class log_based_sync:
 
     def execute_log_based_sync(self):
         "Confirm we have state and run a log based query. This will be larger."
-        ct_sql_query = self._build_ct_sql_query()
+
+        key_properties = common.get_key_properties(self.catalog_entry)
+        ct_sql_query = self._build_ct_sql_query(key_properties)
         self.logger.info("Executing query: {}".format(ct_sql_query))
         time_extracted = utils.now()
         stream_version = common.get_stream_version(
@@ -218,28 +220,39 @@ class log_based_sync:
 
                 while row:
                     counter.increment()
-
+                    desired_columns = []
                     ordered_row = []
-                    for index, column in enumerate(self.columns):
-                        ordered_row.append(row[column])
 
                     rows_saved += 1
 
                     if row["sys_change_operation"] == "D":
+                        for index, column in enumerate(key_properties):
+                            desired_columns.append(column)
+                            ordered_row.append(row[column])
+
+                        desired_columns.append("_sdc_deleted_at")
                         if row["commit_time"] is None:
                             self.logger.warn(
                                 "Found deleted record with no timestamp, falling back to current time."
                             )
                             ordered_row.append(time_extracted)
+                        else:
+                            ordered_row.append(row["commit_time"])
 
                     else:
+
+                        for index, column in enumerate(self.columns):
+                            desired_columns.append(column)
+                            ordered_row.append(row[column])
+
+                        desired_columns.append("_sdc_deleted_at")
                         ordered_row.append(None)
 
                     record_message = common.row_to_singer_record(
                         self.catalog_entry,
                         stream_version,
                         ordered_row,
-                        self.columns + ["_sdc_deleted_at"],
+                        desired_columns,
                         time_extracted,
                     )
                     singer.write_message(record_message)
@@ -256,10 +269,10 @@ class log_based_sync:
 
             singer.write_message(singer.StateMessage(value=copy.deepcopy(self.state)))
 
-    def _build_ct_sql_query(self):
+    def _build_ct_sql_query(self, key_properties):
 
         # make this a separate function?
-        key_properties = common.get_key_properties(self.catalog_entry)
+        # key_properties = common.get_key_properties(self.catalog_entry)
         selected_columns = [
             column for column in self.columns if column not in key_properties
         ]
