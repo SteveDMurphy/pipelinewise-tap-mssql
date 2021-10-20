@@ -183,10 +183,7 @@ class log_based_sync:
         min_valid_version = self._get_min_valid_version()
 
         min_version_out_of_date = min_valid_version > self.current_log_version
-        # self.logger.info("min valid version: ")
-        # self.logger.info(min_valid_version)
-        # self.logger.info(self.current_log_version)
-        # self.logger.info(min_version_out_of_date)
+
         if self.initial_full_table_complete == False:
             self.logger.info("No initial load found, xecuting a full table sync.")
             return True
@@ -205,7 +202,6 @@ class log_based_sync:
         "Confirm we have state and run a log based query. This will be larger."
         ct_sql_query = self._build_ct_sql_query()
         self.logger.info("Executing query: {}".format(ct_sql_query))
-        # LOGGER.warn(self.columns)
         time_extracted = utils.now()
         stream_version = common.get_stream_version(
             self.catalog_entry.tap_stream_id, self.state
@@ -222,30 +218,30 @@ class log_based_sync:
 
                 while row:
                     counter.increment()
-                    # LOGGER.warn(row)
-                    filtered_row_dict = {
-                        x: v for x, v in row.items() if x in self.columns
-                    }
+
+                    ordered_row = []
+                    for index, column in enumerate(self.columns):
+                        ordered_row.append(row[column])
+
                     rows_saved += 1
 
-                    if (
-                        row["sys_change_operation"] == "D"
-                        and row["commit_time"] is None
-                    ):
-                        self.logger.warn(
-                            "Found deleted record with no timestamp, falling back to current time."
-                        )
-                        # Need to do something else here
-                        # row["DateCreated"] = utils.now()
+                    if row["sys_change_operation"] == "D":
+                        if row["commit_time"] is None:
+                            self.logger.warn(
+                                "Found deleted record with no timestamp, falling back to current time."
+                            )
+                            ordered_row.append(time_extracted)
+
+                    else:
+                        ordered_row.append(None)
 
                     record_message = common.row_to_singer_record(
                         self.catalog_entry,
                         stream_version,
-                        filtered_row_dict,
-                        self.columns,
+                        ordered_row,
+                        self.columns + ["_sdc_deleted_at"],
                         time_extracted,
                     )
-
                     singer.write_message(record_message)
 
                     self.state = singer.write_bookmark(
@@ -258,17 +254,15 @@ class log_based_sync:
                     # do more
                     row = results.fetchone()
 
-            # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
             singer.write_message(singer.StateMessage(value=copy.deepcopy(self.state)))
 
     def _build_ct_sql_query(self):
 
         # make this a separate function?
         key_properties = common.get_key_properties(self.catalog_entry)
-        selected_columns = sorted(
-            [column for column in self.columns if column not in key_properties],
-            key=str.lower,
-        )
+        selected_columns = [
+            column for column in self.columns if column not in key_properties
+        ]
         # if no primary keys, skip with error
         # "No primary key(s) found, must have a primary key to replicate")
         key_join_list = []
