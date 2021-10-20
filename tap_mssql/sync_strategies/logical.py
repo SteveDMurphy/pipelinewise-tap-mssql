@@ -203,7 +203,7 @@ class log_based_sync:
 
         key_properties = common.get_key_properties(self.catalog_entry)
         ct_sql_query = self._build_ct_sql_query(key_properties)
-        self.logger.info("Executing query: {}".format(ct_sql_query))
+        self.logger.info("Executing log-based query: {}".format(ct_sql_query))
         time_extracted = utils.now()
         stream_version = common.get_stream_version(
             self.catalog_entry.tap_stream_id, self.state
