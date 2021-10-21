@@ -20,10 +20,6 @@ BOOKMARK_KEYS = {
     "initial_full_table_complete",
 }
 
-# do_sync_incremental(mssql_conn, config, catalog_entry, state, columns)
-
-# do_sync_full_table(mssql_conn, config, catalog_entry, state, columns)
-
 
 class log_based_sync:
     """
@@ -340,12 +336,3 @@ class log_based_sync:
             single_result = row[column]
 
         return single_result
-
-
-# def sync_table(mssql_conn, config, catalog_entry, state, columns):
-#     mssql_conn = MSSQLConnection(config)
-#     common.whitelist_bookmark_keys(
-#         generate_bookmark_keys(catalog_entry), catalog_entry.tap_stream_id, state
-#     )
-
-# 24000870

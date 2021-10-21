@@ -557,19 +557,9 @@ def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
             log_based.current_log_version,
         )
 
-        # log_based.state = state
     else:
         LOGGER.info("Continue log-based syncing")
         log_based.execute_log_based_sync()
-        LOGGER.warn(log_based.current_log_version)
-        # state = singer.write_bookmark(
-        #     state,
-        #     catalog_entry.tap_stream_id,
-        #     "current_log_version",
-        #     log_based.current_log_version,
-        # )
-
-    # singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
 
 def sync_non_binlog_streams(mssql_conn, non_binlog_catalog, config, state):
