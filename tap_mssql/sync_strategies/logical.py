@@ -179,7 +179,7 @@ class log_based_sync:
 
         min_valid_version = self._get_min_valid_version()
 
-        if self.current_log_version is None:
+        if self.current_log_version is None: # prevents the operator in the else statement from erroring if None 
             min_version_out_of_date = False
             self.current_log_version = min_valid_version
         else: 
