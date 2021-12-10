@@ -179,19 +179,21 @@ class log_based_sync:
 
         min_valid_version = self._get_min_valid_version()
 
-        min_version_out_of_date = min_valid_version > self.current_log_version
+        if self.current_log_version is None:
+            min_version_out_of_date = False
+        else: 
+            min_version_out_of_date = min_valid_version > self.current_log_version
 
         if self.initial_full_table_complete == False:
             self.logger.info("No initial load found, executing a full table sync.")
             return True
 
         elif (
-            self.initial_full_table_complete == True and min_version_out_of_date == True
+            self.initial_full_table_complete == True and min_version_out_of_date == True 
         ):
             self.logger.info(
                 "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
             )
-            self.current_log_version = None
             return True
         else:
             return False
