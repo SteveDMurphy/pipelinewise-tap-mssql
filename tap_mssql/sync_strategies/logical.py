@@ -186,6 +186,7 @@ class log_based_sync:
 
         if self.initial_full_table_complete == False:
             self.logger.info("No initial load found, executing a full table sync.")
+            self.current_log_version = min_valid_version
             return True
 
         elif (
