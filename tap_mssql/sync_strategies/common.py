@@ -116,7 +116,7 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
 
         elif property_type in ["binary", "varbinary"]:
             # Convert binary byte array to hex string
-            hex_representation = f"0x{elem.hex()}"
+            hex_representation = f"0x{elem.hex().upper()}"
             row_to_persist += (hex_representation,)
 
         elif isinstance(elem, bytes):
