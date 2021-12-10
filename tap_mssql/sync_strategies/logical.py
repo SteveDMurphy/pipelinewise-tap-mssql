@@ -184,7 +184,7 @@ class log_based_sync:
         self.logger.info('***Current_log_version:' + str(self.current_log_version))
         if self.current_log_version is None: # prevents the operator in the else statement from erroring if None 
             min_version_out_of_date = False
-            self.current_log_version = self._get_current_log_version()
+            self.current_log_version = current_log_version
         else: 
             min_version_out_of_date = min_valid_version > self.current_log_version
 
