@@ -535,8 +535,6 @@ def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
             "initial_full_table_complete",
             log_based.initial_full_table_complete,
         )
-        LOGGER.info("****if not initial_full_table_complete.  current log version is: " + str(log_based.current_log_version)) 
-        #LOGGER.info(log_based.current_log_version)  
         state = singer.write_bookmark(
             state,
             catalog_entry.tap_stream_id,
@@ -554,8 +552,6 @@ def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
             state, catalog_entry.tap_stream_id, "initial_full_table_complete", True
         )
 
-        LOGGER.info("****if initial_load: current log version is: " + str(log_based.current_log_version)) 
-        #LOGGER.info(log_based.current_log_version)    
         state = singer.write_bookmark(
             state,
             catalog_entry.tap_stream_id,
