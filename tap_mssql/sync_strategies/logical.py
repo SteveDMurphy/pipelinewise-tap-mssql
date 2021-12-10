@@ -179,22 +179,19 @@ class log_based_sync:
         "Determine if we should run a full load of the table or use state."
 
         min_valid_version = self._get_min_valid_version()
-        self.logger.info('***Before the new pull: ' + str(self.current_log_version))
-        self.current_log_version = self._get_current_log_version()
-        self.logger.info('***min_valid_version:' + str(min_valid_version))
-        self.logger.info('***Current_log_version:' + str(self.current_log_version))
-        if self.current_log_version is None: # prevents the operator in the else statement from erroring if None 
-            min_version_out_of_date = False
-            self.current_log_version = current_log_version
-        else: 
-            min_version_out_of_date = min_valid_version > self.current_log_version
 
-        if self.initial_full_table_complete == False:
+        min_version_out_of_date = min_valid_version > self.current_log_version
+        
+        if self.current_log_version is None and self.initial_full_table_complete == True:
+            self.logger.info("Conflicting state.  Initial_full_table_complete = true with current_log_version = null")
+            return True
+
+        elif self.initial_full_table_complete == False:
             self.logger.info("No initial load found, executing a full table sync.")
             return True
 
         elif (
-            self.initial_full_table_complete == True and min_version_out_of_date == True 
+            self.initial_full_table_complete == True and min_version_out_of_date == True
         ):
             self.logger.info(
                 "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
