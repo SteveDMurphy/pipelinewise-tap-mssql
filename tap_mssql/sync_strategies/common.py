@@ -114,18 +114,15 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
             timedelta_from_epoch = epoch + elem
             row_to_persist += (timedelta_from_epoch.isoformat() + "+00:00",)
 
-        elif property_type in ["binary", "varbinary"]:
-            if elem is None:
-                row_to_persist += (elem,)
-            else:
+        elif isinstance(elem, bytes):
+            if property_type in ["binary", "varbinary"]:
                 # Convert binary byte array to hex string‘
                 hex_representation = f"0x{elem.hex().upper()}"
                 row_to_persist += (hex_representation,)
-
-        elif isinstance(elem, bytes):
-            # for BIT value, treat 0 as False and anything else as True
-            boolean_representation = elem != b"\x00"
-            row_to_persist += (boolean_representation,)
+            else:
+                # for BIT value, treat 0 as False and anything else as True
+                boolean_representation = elem != b"\x00"
+                row_to_persist += (boolean_representation,)
 
         elif "boolean" in property_type or property_type == "boolean":
             if elem is None:
