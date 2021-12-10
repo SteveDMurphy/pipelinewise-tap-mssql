@@ -185,7 +185,9 @@ class log_based_sync:
             self.logger.info("No initial load found, executing a full table sync.")
             return True
 
-        elif (self.initial_full_table_complete == True and min_version_out_of_date == True):
+        elif (
+            self.initial_full_table_complete == True and min_version_out_of_date == True
+        ):
             self.logger.info(
                 "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
             )
