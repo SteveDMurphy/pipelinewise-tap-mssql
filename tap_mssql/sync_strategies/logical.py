@@ -179,6 +179,7 @@ class log_based_sync:
         "Determine if we should run a full load of the table or use state."
 
         min_valid_version = self._get_min_valid_version()
+        self.logger.info('***Before the new pull: ' + str(self.current_log_version))
         self.current_log_version = self._get_current_log_version()
         self.logger.info('***min_valid_version:' + str(min_valid_version))
         self.logger.info('***Current_log_version:' + str(self.current_log_version))
