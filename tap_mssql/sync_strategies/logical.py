@@ -172,7 +172,6 @@ class log_based_sync:
 
         current_log_version = self._get_single_result(sql_query, "current_version")
         
-        self.logger.info("current_log_version!!!!!!!!!" + str(current_log_version))
         return current_log_version
 
     def log_based_initial_full_table(self):
@@ -335,11 +334,8 @@ class log_based_sync:
         """
         with self.mssql_conn.connect() as open_conn:
             results = open_conn.execute(sql_query)
-
-            self.logger.info("***results!!!!!!!!!" + str(results))
             row = results.fetchone()
 
-            self.logger.info("***row!!!!!!!!!" + str(row))
             single_result = row[column]
         
         return single_result
