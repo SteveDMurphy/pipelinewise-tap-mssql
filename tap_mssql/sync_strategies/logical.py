@@ -180,19 +180,14 @@ class log_based_sync:
 
         min_valid_version = self._get_min_valid_version()
 
-        if self.current_log_version is None and self.initial_full_table_complete == True: # prevents the operator in the else statement from erroring if None 
+        if self.current_log_version is None: # prevents the operator in the else statement from erroring if None 
             self.current_log_version = self._get_current_log_version()
-            self.logger.info("Conflicting state.  Initial_full_table_complete = true with current_log_version = null")
+            self.logger.info("executing a full table sync.")
             return True
         else:
-
             min_version_out_of_date = min_valid_version > self.current_log_version
 
-            if self.initial_full_table_complete == False:
-                self.logger.info("No initial load found, executing a full table sync.")
-                return True
-
-            elif (
+            if (
                 self.initial_full_table_complete == True and min_version_out_of_date == True
             ):
                 self.logger.info(
