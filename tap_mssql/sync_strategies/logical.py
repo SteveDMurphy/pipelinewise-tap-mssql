@@ -180,8 +180,8 @@ class log_based_sync:
 
         min_valid_version = self._get_min_valid_version()
         self.current_log_version = self._get_current_log_version()
-        self.logger.info('min_valid_version' + str(min_valid_version))
-        self.logger.info('Current_log_version' + str(self.current_log_version))
+        self.logger.info('***min_valid_version:' + str(min_valid_version))
+        self.logger.info('***Current_log_version:' + str(self.current_log_version))
         if self.current_log_version is None: # prevents the operator in the else statement from erroring if None 
             min_version_out_of_date = False
             self.current_log_version = self._get_current_log_version()
@@ -344,7 +344,7 @@ class log_based_sync:
             self.logger.info("***results!!!!!!!!!" + str(results))
             row = results.fetchone()
 
-            self.logger.info("***row!!!!!!!!!" + str(results))
+            self.logger.info("***row!!!!!!!!!" + str(row))
             single_result = row[column]
         
         return single_result
