@@ -180,25 +180,26 @@ class log_based_sync:
 
         min_valid_version = self._get_min_valid_version()
 
-        min_version_out_of_date = min_valid_version > self.current_log_version
-        
-        if self.current_log_version is None and self.initial_full_table_complete == True:
+        if self.current_log_version is None and self.initial_full_table_complete == True: # prevents the operator in the else statement from erroring if None 
             self.logger.info("Conflicting state.  Initial_full_table_complete = true with current_log_version = null")
             return True
-
-        elif self.initial_full_table_complete == False:
-            self.logger.info("No initial load found, executing a full table sync.")
-            return True
-
-        elif (
-            self.initial_full_table_complete == True and min_version_out_of_date == True
-        ):
-            self.logger.info(
-                "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
-            )
-            return True
         else:
-            return False
+            
+            min_version_out_of_date = min_valid_version > self.current_log_version
+
+            if self.initial_full_table_complete == False:
+                self.logger.info("No initial load found, executing a full table sync.")
+                return True
+
+            elif (
+                self.initial_full_table_complete == True and min_version_out_of_date == True
+            ):
+                self.logger.info(
+                    "CHANGE_TRACKING_MIN_VALID_VERSION has reported a value greater than current-log-version. Executing a full table sync."
+                )
+                return True
+            else:
+                return False
 
     def execute_log_based_sync(self):
         "Confirm we have state and run a log based query. This will be larger."
