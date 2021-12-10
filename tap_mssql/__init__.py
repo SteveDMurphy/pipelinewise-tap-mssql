@@ -552,7 +552,8 @@ def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
             state, catalog_entry.tap_stream_id, "initial_full_table_complete", True
         )
 
-        self.logger.info("****Should update right here!!! " + str(log_based.current_log_version))        
+        self.logger.info("****Should update right here!!!")   
+        self.logger.info(log_based.current_log_version)        
         state = singer.write_bookmark(
             state,
             catalog_entry.tap_stream_id,
