@@ -247,7 +247,8 @@ def discover_catalog(mssql_conn, config):
             md_map = metadata.write(md_map, (), "database-name", table_schema)
 
             is_view = table_info[table_schema][table_name]["is_view"]
-
+            database_name = table_info[table_schema][table_name]["database-name"]
+ 
             if table_schema in table_info and table_name in table_info[table_schema]:
                 row_count = table_info[table_schema][table_name].get("row_count")
 
@@ -261,7 +262,7 @@ def discover_catalog(mssql_conn, config):
             md_map = metadata.write(md_map, (), "table-key-properties", key_properties)
 
             entry = CatalogEntry(
-                table=table_name,
+                table=database_name + '_' + table_name,
                 stream=table_name,
                 metadata=metadata.to_list(md_map),
                 tap_stream_id=common.generate_tap_stream_id(table_schema, table_name),
