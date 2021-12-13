@@ -491,9 +491,11 @@ def do_sync_incremental(mssql_conn, config, catalog_entry, state, columns):
 
 def do_sync_full_table(mssql_conn, config, catalog_entry, state, columns):
     key_properties = common.get_key_properties(catalog_entry)
-
+    LOGGER.info("***BROSE CATALOG_ENTRY***")
+    LOGGER.info(catalog_entry)
+    LOGGER.info("***BROSE END CATALOG ENTRY***")
     write_schema_message(catalog_entry)
-
+    
     stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
 
     full_table.sync_table(
