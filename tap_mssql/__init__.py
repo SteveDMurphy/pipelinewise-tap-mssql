@@ -467,6 +467,7 @@ def get_binlog_streams(mssql_conn, catalog, config, state):
 
 def write_schema_message(catalog_entry, bookmark_properties=[]):
     key_properties = common.get_key_properties(catalog_entry)
+    LOGGER.info("***BROSE - write_schema_message")
     LOGGER.info("***BROSE - CATALOG_ENTRY HERE")
     LOGGER.info(catalog_entry)
     LOGGER.info("***BROSE - CATALOG.STREAM")
@@ -475,10 +476,10 @@ def write_schema_message(catalog_entry, bookmark_properties=[]):
     LOGGER.info(key_properties)
     LOGGER.info("***BROSE - bookmark_properties")
     LOGGER.info(bookmark_properties)
-    new_stream = catalog_entry.stream
+     
     singer.write_message(
         singer.SchemaMessage(
-            stream=new_stream.replace('-', '_'),
+            stream=catalog_entry.stream.replace('-', '_'),
             schema=catalog_entry.schema.to_dict(),
             key_properties=key_properties,
             bookmark_properties=bookmark_properties,
