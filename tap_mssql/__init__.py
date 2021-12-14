@@ -261,6 +261,8 @@ def discover_catalog(mssql_conn, config):
 
             md_map = metadata.write(md_map, (), "table-key-properties", key_properties)
 
+            discover_catalo
+
             entry = CatalogEntry(
                 table=table_name,
                 stream=table_name,
@@ -474,9 +476,10 @@ def write_schema_message(catalog_entry, bookmark_properties=[]):
     LOGGER.info(key_properties)
     LOGGER.info("***BROSE - bookmark_properties")
     LOGGER.info(bookmark_properties)
+    new_stream = catalog_entry.stream
     singer.write_message(
         singer.SchemaMessage(
-            stream=catalog_entry.stream,
+            stream=new_stream.replace('-', '_'),
             schema=catalog_entry.schema.to_dict(),
             key_properties=key_properties,
             bookmark_properties=bookmark_properties,

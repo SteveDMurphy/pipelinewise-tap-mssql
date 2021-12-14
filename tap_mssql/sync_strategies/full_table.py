@@ -47,8 +47,10 @@ def sync_table(mssql_conn, config, catalog_entry, state, columns, stream_version
 
     state_version = singer.get_bookmark(state, catalog_entry.tap_stream_id, "version")
 
+
+    new_stream = catalog_entry.stream
     activate_version_message = singer.ActivateVersionMessage(
-        stream=catalog_entry.stream, version=stream_version
+        stream=new_stream.replace('-', '_'), version=stream_version
     )
 
     # For the initial replication, emit an ACTIVATE_VERSION message

@@ -137,9 +137,9 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
         else:
             row_to_persist += (elem,)
     rec = dict(zip(columns, row_to_persist))
-
+    new_stream = catalog_entry.stream
     return singer.RecordMessage(
-        stream=catalog_entry.stream,
+        stream=new_stream.replace('-', '_'),
         record=rec,
         version=version,
         time_extracted=time_extracted,
