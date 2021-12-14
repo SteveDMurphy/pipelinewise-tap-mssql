@@ -34,6 +34,7 @@ class log_based_sync:
         self.state = state
         self.columns = columns
         self.database_name = config.get("database")
+        self.schema_mapping = config.get("include_schemas_in_destination_stream_name")
         self.schema_name = common.get_database_name(self.catalog_entry)
         self.table_name = catalog_entry.table
         self.mssql_conn = mssql_conn

@@ -23,6 +23,12 @@ def escape(string):
         )
     return '"' + string + '"'
 
+def set_schema_mapping(config, stream): 
+    schema_mapping = config.get("include_schemas_in_destination_stream_name")
+    if schema_mapping:
+        stream = stream.replace('-', '_')
+
+    return stream
 
 def generate_tap_stream_id(table_schema, table_name):
     return table_schema + "-" + table_name
@@ -137,10 +143,9 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
         else:
             row_to_persist += (elem,)
     rec = dict(zip(columns, row_to_persist))
- 
 
     return singer.RecordMessage(
-        stream=catalog_entry.stream.replace('-', '_'),
+        stream=catalog_entry.table_stream,
         record=rec,
         version=version,
         time_extracted=time_extracted,
@@ -159,7 +164,7 @@ def whitelist_bookmark_keys(bookmark_key_set, tap_stream_id, state):
 
 
 def sync_query(
-    cursor, catalog_entry, state, select_sql, columns, stream_version, params
+    cursor, catalog_entry, state, select_sql, columns, stream_version, table_stream, params
 ):
     replication_key = singer.get_bookmark(
         state, catalog_entry.tap_stream_id, "replication_key"

@@ -45,7 +45,7 @@ Column = collections.namedtuple(
     ],
 )
 
-REQUIRED_CONFIG_KEYS = ["host", "database", "user", "password", "include_schemas_in_destination_stream_name"]
+REQUIRED_CONFIG_KEYS = ["host", "database", "user", "password"]
 
 LOGGER = singer.get_logger()
 logger = logging.getLogger(__name__)
@@ -468,10 +468,7 @@ def get_binlog_streams(mssql_conn, catalog, config, state):
 def write_schema_message(config, catalog_entry, bookmark_properties=[]):
     key_properties = common.get_key_properties(catalog_entry)
 
-    if config.get("include_schemas_in_destination_stream_name"):
-        table_stream = catalog_entry.stream.replace('-', '_')
-    else:
-        table_stream = catalog_entry.stream
+    table_stream = common.set_schema_mapping(config, catalog_entry.stream)
  
     singer.write_message(
         singer.SchemaMessage(
