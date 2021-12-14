@@ -247,7 +247,7 @@ def discover_catalog(mssql_conn, config):
             md_map = metadata.write(md_map, (), "database-name", table_schema)
 
             is_view = table_info[table_schema][table_name]["is_view"]
-            database_name = table_info[table_schema][table_name]["database-name"]
+             
  
             if table_schema in table_info and table_name in table_info[table_schema]:
                 row_count = table_info[table_schema][table_name].get("row_count")
@@ -255,14 +255,14 @@ def discover_catalog(mssql_conn, config):
                 if row_count is not None:
                     md_map = metadata.write(md_map, (), "row-count", row_count)
 
-                md_map = metadata.write(md_map, (), "is-view", is_view)
+                md_map = metadata.write(md_map, (), "is-view", is_view) 
 
             key_properties = [c.column_name for c in cols if c.is_primary_key == 1]
 
             md_map = metadata.write(md_map, (), "table-key-properties", key_properties)
 
             entry = CatalogEntry(
-                table=database_name + '_' + table_name,
+                table=table_name,
                 stream=table_name,
                 metadata=metadata.to_list(md_map),
                 tap_stream_id=common.generate_tap_stream_id(table_schema, table_name),
@@ -466,7 +466,14 @@ def get_binlog_streams(mssql_conn, catalog, config, state):
 
 def write_schema_message(catalog_entry, bookmark_properties=[]):
     key_properties = common.get_key_properties(catalog_entry)
-
+    LOGGER.info("***BROSE - CATALOG_ENTRY HERE")
+    LOGGER.info(catalog_entry)
+    LOGGER.info("***BROSE - CATALOG.STREAM")
+    LOGGER.info(catalog_entry.stream)
+    LOGGER.info("***BROSE - key_properties")
+    LOGGER.info(key_properties)
+    LOGGER.info("***BROSE - bookmark_properties")
+    LOGGER.info(bookmark_properties)
     singer.write_message(
         singer.SchemaMessage(
             stream=catalog_entry.stream,
