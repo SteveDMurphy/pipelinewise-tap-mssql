@@ -248,7 +248,6 @@ def discover_catalog(mssql_conn, config):
 
             is_view = table_info[table_schema][table_name]["is_view"]
              
- 
             if table_schema in table_info and table_name in table_info[table_schema]:
                 row_count = table_info[table_schema][table_name].get("row_count")
 
@@ -483,6 +482,7 @@ def write_schema_message(config, catalog_entry, bookmark_properties=[]):
 def do_sync_incremental(mssql_conn, config, catalog_entry, state, columns):
     md_map = metadata.to_map(catalog_entry.metadata)
     stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
+    
     replication_key = md_map.get((), {}).get("replication-key")
     write_schema_message(
         config, catalog_entry=catalog_entry, bookmark_properties=[replication_key]
