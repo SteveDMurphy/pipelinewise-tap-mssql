@@ -467,17 +467,15 @@ def get_binlog_streams(mssql_conn, catalog, config, state):
 
 def write_schema_message(config, catalog_entry, bookmark_properties=[]):
     key_properties = common.get_key_properties(catalog_entry)
-    LOGGER.info("***BROSE - CONFIG incremental")
-    LOGGER.info(config)
-    LOGGER.info(config.get("include_schemas_in_destination_stream_name"))
-    schema_mapping = config.get("include_schemas_in_destination_stream_name")
+
     if config.get("include_schemas_in_destination_stream_name"):
-        LOGGER.info("***BROSE - Schema Mapping incremental")
-        LOGGER.info(config)
-        LOGGER.info(schema_mapping)
+        table_stream = catalog_entry.stream.replace('-', '_')
+    else:
+        table_stream = catalog_entry.stream
+ 
     singer.write_message(
         singer.SchemaMessage(
-            stream=catalog_entry.stream.replace('-', '_'),
+            stream=table_stream,
             schema=catalog_entry.schema.to_dict(),
             key_properties=key_properties,
             bookmark_properties=bookmark_properties,

@@ -49,18 +49,13 @@ def sync_table(mssql_conn, config, catalog_entry, state, columns):
         state, catalog_entry.tap_stream_id, "version", stream_version
     )
     
-    LOGGER.info("***BROSE - CONFIG incremental")
-    LOGGER.info(config)
-    LOGGER.info(config.get("include_schemas_in_destination_stream_name"))
-    schema_mapping = config.get("include_schemas_in_destination_stream_name")
     if config.get("include_schemas_in_destination_stream_name"):
-        LOGGER.info("***BROSE - Schema Mapping incremental")
-        LOGGER.info(config)
-        LOGGER.info(schema_mapping)
+        table_stream = catalog_entry.stream.replace('-', '_')
+    else:
+        table_stream = catalog_entry.stream
       
-       
     activate_version_message = singer.ActivateVersionMessage(
-        stream=catalog_entry.stream.replace('-', '_'), version=stream_version
+        stream=table_stream, version=stream_version
     )
 
     singer.write_message(activate_version_message)
