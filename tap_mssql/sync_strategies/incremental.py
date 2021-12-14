@@ -49,12 +49,12 @@ def sync_table(mssql_conn, config, catalog_entry, state, columns):
         state, catalog_entry.tap_stream_id, "version", stream_version
     )
     
-    LOGGER.info("***BROSE - CONFIG")
+    LOGGER.info("***BROSE - CONFIG incremental")
     LOGGER.info(config)
     LOGGER.info(config.get("include_schemas_in_destination_stream_name"))
     schema_mapping = config.get("include_schemas_in_destination_stream_name")
     if config.get("include_schemas_in_destination_stream_name"):
-        LOGGER.info("***BROSE - Schema Mapping")
+        LOGGER.info("***BROSE - Schema Mapping incremental")
         LOGGER.info(config)
         LOGGER.info(schema_mapping)
       

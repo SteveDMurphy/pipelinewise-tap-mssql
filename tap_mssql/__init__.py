@@ -465,9 +465,16 @@ def get_binlog_streams(mssql_conn, catalog, config, state):
     return resolve_catalog(discovered, binlog_streams)
 
 
-def write_schema_message(catalog_entry, bookmark_properties=[]):
+def write_schema_message(config, catalog_entry, bookmark_properties=[]):
     key_properties = common.get_key_properties(catalog_entry)
-     
+    LOGGER.info("***BROSE - CONFIG incremental")
+    LOGGER.info(config)
+    LOGGER.info(config.get("include_schemas_in_destination_stream_name"))
+    schema_mapping = config.get("include_schemas_in_destination_stream_name")
+    if config.get("include_schemas_in_destination_stream_name"):
+        LOGGER.info("***BROSE - Schema Mapping incremental")
+        LOGGER.info(config)
+        LOGGER.info(schema_mapping)
     singer.write_message(
         singer.SchemaMessage(
             stream=catalog_entry.stream.replace('-', '_'),
@@ -483,7 +490,7 @@ def do_sync_incremental(mssql_conn, config, catalog_entry, state, columns):
     stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
     replication_key = md_map.get((), {}).get("replication-key")
     write_schema_message(
-        catalog_entry=catalog_entry, bookmark_properties=[replication_key]
+        config, catalog_entry=catalog_entry, bookmark_properties=[replication_key]
     )
     LOGGER.info("Schema written")
     incremental.sync_table(mssql_conn, config, catalog_entry, state, columns)
@@ -494,7 +501,7 @@ def do_sync_incremental(mssql_conn, config, catalog_entry, state, columns):
 def do_sync_full_table(mssql_conn, config, catalog_entry, state, columns):
     key_properties = common.get_key_properties(catalog_entry)
 
-    write_schema_message(catalog_entry)
+    write_schema_message(config, catalog_entry)
     
     stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
 
@@ -516,7 +523,7 @@ def do_sync_log_based_table(mssql_conn, config, catalog_entry, state, columns):
 
     key_properties = common.get_key_properties(catalog_entry)
     state = singer.set_currently_syncing(state, catalog_entry.tap_stream_id)
-    write_schema_message(catalog_entry)
+    write_schema_message(config, catalog_entry)
 
     stream_version = common.get_stream_version(catalog_entry.tap_stream_id, state)
 
