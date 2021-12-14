@@ -45,7 +45,7 @@ Column = collections.namedtuple(
     ],
 )
 
-REQUIRED_CONFIG_KEYS = ["host", "database", "user", "password"]
+REQUIRED_CONFIG_KEYS = ["host", "database", "user", "password", "include_schemas_in_destination_stream_name"]
 
 LOGGER = singer.get_logger()
 logger = logging.getLogger(__name__)
