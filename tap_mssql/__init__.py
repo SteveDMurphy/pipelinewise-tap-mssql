@@ -260,8 +260,7 @@ def discover_catalog(mssql_conn, config):
             key_properties = [c.column_name for c in cols if c.is_primary_key == 1]
 
             md_map = metadata.write(md_map, (), "table-key-properties", key_properties)
-
-            discover_catalo
+ 
 
             entry = CatalogEntry(
                 table=table_name,
