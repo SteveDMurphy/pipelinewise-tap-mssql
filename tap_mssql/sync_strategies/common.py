@@ -25,9 +25,9 @@ def escape(string):
 
 def set_schema_mapping(config, stream): 
     schema_mapping = config.get("include_schemas_in_destination_stream_name")
+    
     if schema_mapping:
         stream = stream.replace('-', '_')
-
     return stream
 
 def generate_tap_stream_id(table_schema, table_name):
@@ -145,7 +145,7 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
     rec = dict(zip(columns, row_to_persist))
 
     return singer.RecordMessage(
-        stream=catalog_entry.table_stream,
+        stream=table_stream,
         record=rec,
         version=version,
         time_extracted=time_extracted,
