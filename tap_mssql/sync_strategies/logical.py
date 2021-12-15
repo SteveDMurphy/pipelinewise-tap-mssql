@@ -267,12 +267,12 @@ class log_based_sync:
 
                         desired_columns.append("_sdc_deleted_at")
                         ordered_row.append(None)
-                        
-                    table_stream = self.catalog_entry.stream.replace('-', '_')
+                    
+                    self.catalog_entry.stream = common.set_schema_mapping(self.config, self.catalog_entry.stream)
+                    
                     record_message = common.row_to_singer_record(
                         self.catalog_entry,
                         stream_version,
-                        table_stream,
                         ordered_row,
                         desired_columns,
                         time_extracted,
