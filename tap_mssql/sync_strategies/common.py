@@ -11,8 +11,6 @@ import singer.metrics as metrics
 from singer import metadata
 from singer import utils
 
-import pyodbc
-
 LOGGER = singer.get_logger()
 
 
@@ -95,7 +93,7 @@ def generate_select_sql(catalog_entry, columns):
     escaped_table = escape(catalog_entry.table)
     escaped_columns = [escape(c) for c in columns]
 
-    select_sql = "SELECT {} FROM {}.{} where InputKey in (2504052)".format(
+    select_sql = "SELECT {} FROM {}.{}".format(
         ",".join(escaped_columns), escaped_db, escaped_table
     )
 
@@ -183,14 +181,14 @@ def sync_query(
         state, catalog_entry.tap_stream_id, "replication_key"
     )
 
+    # query_string = cursor.mogrify(select_sql, params)
+
     time_extracted = utils.now()
     if len(params) == 0:
         results = cursor.execute(select_sql)
     else:
         results = cursor.execute(select_sql, params["replication_key_value"])
-
     row = results.fetchone()
-
     rows_saved = 0
 
     database_name = get_database_name(catalog_entry)
