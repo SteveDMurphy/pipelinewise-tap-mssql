@@ -169,16 +169,6 @@ def whitelist_bookmark_keys(bookmark_key_set, tap_stream_id, state):
         singer.clear_bookmark(state, tap_stream_id, bk)
 
 
-def decode_sketchy_utf16(raw_bytes):
-    s = raw_bytes.decode("utf-16le", "ignore")
-    try:
-        n = s.index("\u0000")
-        s = s[:n]  # respect null terminator
-    except ValueError:
-        pass
-    return s
-
-
 def sync_query(
     cursor,
     catalog_entry,
@@ -193,27 +183,13 @@ def sync_query(
         state, catalog_entry.tap_stream_id, "replication_key"
     )
 
-    # query_string = cursor.mogrify(select_sql, params)
-    # LOGGER.info("Slartibartfast")
-    # LOGGER.info(type(cursor))
-    # cursor.setencoding("utf-16le")
-    # cursor.setdecoding(pyodbc.SQL_CHAR, encoding="utf-8")
-    # cursor.setdecoding(pyodbc.SQL_WCHAR, encoding="utf-16le")
     time_extracted = utils.now()
     if len(params) == 0:
         results = cursor.execute(select_sql)
     else:
         results = cursor.execute(select_sql, params["replication_key_value"])
 
-    try:
-        row = results.fetchone()
-    except:
-        prev_converter = cursor.connection.get_output_converter(pyodbc.SQL_WVARCHAR)
-        cursor.connection.add_output_converter(
-            pyodbc.SQL_WVARCHAR, decode_sketchy_utf16
-        )
-        row = results.fetchone()
-        cursor.connection.add_output_converter(pyodbc.SQL_WVARCHAR, prev_converter)
+    row = results.fetchone()
 
     rows_saved = 0
 
